@@ -23,8 +23,8 @@ use tnua_demos_crate::app_setup_options::{AppSetupConfiguration, ScheduleToUse};
 use tnua_demos_crate::character_control_systems::info_dumpeing_systems::character_control_info_dumping_system;
 use tnua_demos_crate::character_control_systems::info_dumpeing_systems::character_control_radar_visualization_system;
 use tnua_demos_crate::character_control_systems::platformer_control_systems::{
-    apply_platformer_controls, CameraController, CharacterMotionConfigForPlatformerDemo,
-    FallingThroughControlScheme,
+    apply_platformer_controls, CharacterMotionConfigForPlatformerDemo, FallingThroughControlScheme,
+    FloatingCameraController,
 };
 use tnua_demos_crate::character_control_systems::Dimensionality;
 use tnua_demos_crate::level_mechanics::LevelMechanicsPlugin;
@@ -152,16 +152,13 @@ fn setup_camera_and_lights(mut commands: Commands) {
 /// Updates the camera trasfrom from the the [`CameraController`] component.
 /// The [`CameraController`] itself is updated via the UI (requires "egui" features).
 fn apply_camera_transform(
-    camera_controller: Single<&CameraController>,
+    camera_controller: Single<&FloatingCameraController>,
     mut camera_query: Single<&mut Transform, With<Camera>>,
 ) {
     use core::ops::DerefMut;
-    let CameraController::LookingAt { from, to } = &mut camera_controller.into_inner() else {
-        // or panic!
-        return;
-    };
     let camera = camera_query.deref_mut().deref_mut();
-    *camera = Transform::from_translation(from.f32()).looking_at(to.f32(), Vec3::Y);
+    *camera = Transform::from_translation(camera_controller.from.f32())
+        .looking_at(camera_controller.to.f32(), Vec3::Y);
 }
 
 fn setup_player(mut commands: Commands, asset_server: Res<AssetServer>) {
@@ -170,7 +167,7 @@ fn setup_player(mut commands: Commands, asset_server: Res<AssetServer>) {
     cmd.insert(GltfSceneHandler {
         names_from: asset_server.load("player.glb"),
     });
-    cmd.insert(CameraController::default_looking_at());
+    cmd.insert(FloatingCameraController::default());
     // The character entity must be configured as a dynamic rigid body of the physics backend.
     #[cfg(feature = "rapier3d")]
     {
